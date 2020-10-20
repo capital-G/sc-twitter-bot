@@ -19,7 +19,7 @@ class TwitterBot:
             consumer_secret: str,
             access_token_key: str,
             access_token_secret: str,
-            do_login: bool = False,
+            do_login: bool = True,
             sleep_time: int = 5 * 60,
             bot_screen_name: str = 'sc2sbot',
             **kwargs,
@@ -63,7 +63,7 @@ class TwitterBot:
                 video_path
             ], stdout=subprocess.PIPE, stderr=subprocess.STDOUT if debug else subprocess.PIPE)
 
-            log.debug(f'Converted {wav_file} to {video_path}')
+            log.debug(f'Converted {wav_file.name} to {video_path}')
 
     @staticmethod
     def _convert_urls_to_sc_code(tweet: tweepy.models.Status) -> str:
@@ -74,7 +74,7 @@ class TwitterBot:
         :param tweet:
         :return: tweet text w/ urls (SinOsc.ar gets t.co/fda) -> actual tweet text
         """
-        tweet_text = str(tweet.text)
+        tweet_text = str(tweet.full_text)
         for url_entity in tweet.entities['urls']:
             tweet_text = tweet_text.replace(url_entity['url'], url_entity['display_url'])
         return tweet_text
@@ -97,24 +97,26 @@ class TwitterBot:
     def _filter_out_synth_def(self, tweet: tweepy.models.Status) -> str:
         text = self._convert_urls_to_sc_code(tweet)
         twitter_name_filter = re.compile(re.escape(f'@{self.bot_screen_name}'), re.IGNORECASE)
-        return twitter_name_filter.sub('', text).strip()
+        text = twitter_name_filter.sub('', text).strip()
+        log.debug(f'Filtered out {text} from {tweet.full_text}')
+        return text
 
     def look_for_mentions(self):
-        start_mentions = self.api.mentions_timeline()
+        start_mentions = self.api.mentions_timeline(tweet_mode='extended')
         seen_mention_ids = set([s.id for s in start_mentions])
         while True:
-            new_mentions = self.api.mentions_timeline()
+            new_mentions = self.api.mentions_timeline(tweet_mode='extended')
             mention: tweepy.models.Status
             for mention in [m for m in new_mentions if m.id not in seen_mention_ids]:
-                log.info(f"New mention from @{mention.user.screen_name}: {mention.text}")
+                log.info(f"New mention from @{mention.user.screen_name}: {mention.full_text}")
                 try:
                     self.post_supercollider_sound_tweet(
                         sc_synth_def=self._filter_out_synth_def(mention),
                         reply_tweet=mention,
                     )
-                    log.info(f'Successfully posted tweet response to {mention.text}')
+                    log.info(f'Successfully posted tweet response to {mention.full_text}')
                 except ConverterException as e:
-                    log.info(f'Could not convert SynthDef {mention.text} to audio: {e}')
+                    log.info(f'Could not convert SynthDef {mention.full_text} to audio: {e}')
             seen_mention_ids = set([s.id for s in new_mentions])
             log.debug(f'Go sleeping for {self.sleep_time} seconds')
             time.sleep(self.sleep_time)

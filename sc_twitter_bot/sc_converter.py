@@ -64,7 +64,6 @@ class SuperColliderConverter:
             synth_def=synth_def,
             duration=f'{duration:.1f}'
         )
-        log.debug(f'Created new SC template: {sc_template}')
         with tempfile.NamedTemporaryFile('w', suffix='.sc') as sc_file:
             log.debug(f'Write SC template to {sc_file.name}')
             sc_file.write(sc_template)
