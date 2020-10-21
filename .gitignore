@@ -2,7 +2,6 @@
 *.wav
 *.mp4
 *.mov
-start_bot.py
 .idea/
 
 # Created by .ignore support plugin (hsz.mobi)
