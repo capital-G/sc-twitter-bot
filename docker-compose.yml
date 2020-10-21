@@ -1,0 +1,11 @@
+version: "3.0"
+
+services:
+  bot:
+    build:
+      context: .
+    privileged: true
+    env_file:
+      - .env
+    devices:
+      - /dev/snd:/dev/snd
