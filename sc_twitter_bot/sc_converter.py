@@ -45,10 +45,9 @@ class SuperColliderConverter:
             self,
             synth_def: str,
             osc_file_path: str,
-            debug: bool = False,
-            timeout: int = 15,
+            timeout: int = 10,
             duration: float = 10.0,
-            ** kwargs
+            **kwargs
     ):
         """
         For some reason we cannot use the simple `subprocess.check_output` here as it will
@@ -73,21 +72,19 @@ class SuperColliderConverter:
             log.debug(f'Starting conversion to OSC of {synth_def}')
             p = subprocess.Popen(
                 [self.sclang_path, sc_file.name],
-                universal_newlines=True,
-                stdout=subprocess.STDOUT if debug else subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.STDOUT,
+                shell=False,
             )
+            try:
+                p.wait(timeout)
+            except subprocess.TimeoutExpired:
+                log.debug('Could not receive sclang exit code in time')
+            finally:
+                p.kill()
 
-            while True:
-                state = p.poll()
-                if state is not None:
-                    log.debug(f'Finished creating OSC file in {(datetime.now() - start_time).seconds} seconds')
-                    break
-                if (datetime.now() - start_time).seconds > timeout:
-                    # tests say that PID is still running but this is not true
-                    p.kill()
-                    raise ConverterException(f'Could not convert {synth_def} to OSC within time limit - syntax error?')
-                time.sleep(0.5)
-            p.kill()
+            if os.path.getsize(sc_file.name) < 5:
+                raise ConverterException(f'Could not convert {synth_def} to OSC - syntax error?')
 
     def _osc_to_wav(
             self,

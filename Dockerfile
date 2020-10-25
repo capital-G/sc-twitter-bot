@@ -14,4 +14,6 @@ RUN pip install -r requirements.txt
 
 ADD . .
 
+ENV PYTHONUNBUFFERED=0
+
 CMD ["python", "/home/sc-twitter-bot/start_bot.py"]
