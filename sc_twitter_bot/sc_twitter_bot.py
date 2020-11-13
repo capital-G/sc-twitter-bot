@@ -105,18 +105,23 @@ class TwitterBot:
         start_mentions = self.api.mentions_timeline(tweet_mode='extended')
         seen_mention_ids = set([s.id for s in start_mentions])
         while True:
-            new_mentions = self.api.mentions_timeline(tweet_mode='extended')
-            mention: tweepy.models.Status
-            for mention in [m for m in new_mentions if m.id not in seen_mention_ids]:
-                log.info(f"New mention from @{mention.user.screen_name}: {mention.full_text}")
-                try:
-                    self.post_supercollider_sound_tweet(
-                        sc_synth_def=self._filter_out_synth_def(mention),
-                        reply_tweet=mention,
-                    )
-                    log.info(f'Successfully posted tweet response to {mention.full_text}')
-                except ConverterException as e:
-                    log.info(f'Could not convert SynthDef {mention.full_text} to audio: {e}')
-            seen_mention_ids = set([s.id for s in new_mentions])
-            log.debug(f'Go sleeping for {self.sleep_time} seconds')
-            time.sleep(self.sleep_time)
+            try:
+                new_mentions = self.api.mentions_timeline(tweet_mode='extended')
+                mention: tweepy.models.Status
+                for mention in [m for m in new_mentions if m.id not in seen_mention_ids]:
+                    log.info(f"New mention from @{mention.user.screen_name}: {mention.full_text}")
+                    try:
+                        self.post_supercollider_sound_tweet(
+                            sc_synth_def=self._filter_out_synth_def(mention),
+                            reply_tweet=mention,
+                        )
+                        log.info(f'Successfully posted tweet response to {mention.full_text}')
+                    except ConverterException as e:
+                        log.info(f'Could not convert SynthDef {mention.full_text} to audio: {e}')
+                seen_mention_ids = set([s.id for s in new_mentions])
+            except tweepy.error.TweepError as e:
+                log.error(f'Received invalid answer from Twitter, back off for 10 minutes: {e}')
+                time.sleep(10*60)
+
+        log.debug(f'Go sleeping for {self.sleep_time} seconds')
+        time.sleep(self.sleep_time)
