@@ -1,6 +1,6 @@
 # Supercollider Twitter Bot
 
-![CI Badge](https://github.com/capital-G/sc-twitter-bot/workflows/CI/badge.svg)
+![CI Badge](https://github.com/capital-G/sc-twitter-bot/workflows/CI/badge.svg?branch=main)
 
 A Twitter bot which replies with generated music from sended SynthDefs.
 
