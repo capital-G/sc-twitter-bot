@@ -30,7 +30,7 @@ jobs:
 
       # Runs a single command using the runners shell
       - name: Install FFMPEG
-        run: sudo apt-get -y install ffmpeg
+        run: sudo apt-get update && sudo apt-get -y install ffmpeg
 
       - name: Install pip requirements
         run: pip install -r requiremenst.txt
