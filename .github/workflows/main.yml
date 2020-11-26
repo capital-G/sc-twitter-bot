@@ -24,4 +24,4 @@ jobs:
     steps:
     - name: Test in container
       id: tests
-      uses: actions/sc_twitter_bot_docker@v1
+      uses: capital-G/sc-twitter-bot@v1
