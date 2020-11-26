@@ -1,6 +1,0 @@
-name: 'sc_twitter_bot_docker'
-description: 'GitHub action for docker'
-runs:
-  using: 'docker'
-  image: 'Dockerfile'
-  entrypoint: "python -m unittest"
