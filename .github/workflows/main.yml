@@ -22,16 +22,6 @@ jobs:
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
-        with:
-          python-version: '3.8'
-
-      # Runs a single command using the runners shell
-      - name: Install SuperCollider
-        run: apt-get -y install supercollider
-
-      # Runs a set of commands using the runners shell
-      - name: Run tests
-        run: ./$GITHUB_WORKSPACE/run_tests.sh
+    - name: Test in container
+      id: tests
+      uses: actions/sc_twitter_bot_docker@v1
