@@ -33,7 +33,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get -y install ffmpeg
 
       - name: Install pip requirements
-        run: pip install -r requiremenst.txt
+        run: cd $GITHUB_WORKSPACE && pip install -r requiremenst.txt
 
       # Runs a set of commands using the runners shell
       - name: Run tests
