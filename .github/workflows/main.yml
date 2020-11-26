@@ -32,8 +32,11 @@ jobs:
       - name: Install FFMPEG
         run: sudo apt-get update && sudo apt-get -y install ffmpeg
 
+      - name: Install SuperCollider
+        run: cd ${{ github.workspace }} && ./install_sc.sh
+
       - name: Install pip requirements
-        run: cd ${{ github.workspace }} && pip install -r requirements.txt
+        run: pip install -r requirements.txt
 
       # Runs a set of commands using the runners shell
       - name: Run tests
