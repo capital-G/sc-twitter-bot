@@ -14,10 +14,10 @@ logger.addHandler(ch)
 
 if __name__ == "__main__":
     twitter_bot = TwitterBot(
+        bearer_token=os.environ["API_BEARER_TOKEN"],
         consumer_key=os.environ["API_KEY"],
         consumer_secret=os.environ["API_KEY_SECRET"],
         access_token_key=os.environ["API_ACCESS_TOKEN"],
         access_token_secret=os.environ["API_ACCESS_TOKEN_SECRET"],
-        sleep_time=60,
     )
-    twitter_bot.look_for_mentions()
+    twitter_bot.start()

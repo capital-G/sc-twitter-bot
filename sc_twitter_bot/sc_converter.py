@@ -70,7 +70,7 @@ class SuperColliderConverter:
             sc_file.flush()
 
             start_time = datetime.now()
-            log.debug(f"Starting conversion to OSC of {synth_def}")
+            log.debug(f'Starting conversion to OSC of "{synth_def}"')
             p = subprocess.Popen(
                 [self.sclang_path, sc_file.name],
                 stdout=subprocess.DEVNULL,
@@ -96,7 +96,7 @@ class SuperColliderConverter:
         sample_rate: int = 48000,
         header_format: str = "WAV",
         sample_format: str = "int24",
-        num_channels: int = 1,
+        num_channels: int = 2,
         **kwargs,
     ):
         log.debug(f"Start converting {osc_file} to {wav_file}")
@@ -122,13 +122,15 @@ class SuperColliderConverter:
             f"Successfully converted {osc_file} to {wav_file} in {(datetime.now() - start_time).seconds} seconds"
         )
 
-    def playback_synthdef(self, synth_def: str, output_file_path: str, **kwargs):
+    def record_sc_code(
+        self, sc_code: str, output_file_path: str, duration: float = 30.0, **kwargs
+    ) -> str:
         """
         Converts a supercollider SynthDef to a wav file by playing the SynthDef.
         For this we first convert the SynthDef to a OSC score via ``sclang`` and then convert
         this OSC blob to a wav file with ``scsynth``.
 
-        :param synth_def: SuperCollider SynthDef, e.g.
+        :param sc_code: SuperCollider SynthDef, e.g.
             .. code-block:: supercollider
 
                 {SinOsc.ar}
@@ -138,5 +140,6 @@ class SuperColliderConverter:
         :return:
         """
         with tempfile.NamedTemporaryFile(suffix=".osc") as osc_file:
-            self._sc_to_osc_file(synth_def, osc_file.name, **kwargs)
+            self._sc_to_osc_file(sc_code, osc_file.name, duration=duration, **kwargs)
             self._osc_to_wav(osc_file.name, output_file_path, **kwargs)
+        return output_file_path

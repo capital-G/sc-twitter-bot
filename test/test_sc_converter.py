@@ -1,7 +1,7 @@
 import os
 from unittest import TestCase
 
-from sc_twitter_bot.sc_converter import SuperColliderConverter, ConverterException
+from sc_twitter_bot import SuperColliderConverter, ConverterException
 
 
 class SupercolliderConverterTestCase(TestCase):
@@ -10,7 +10,7 @@ class SupercolliderConverterTestCase(TestCase):
 
     def test_synth_def(self, test_file: str = "test.wav", delete: bool = True):
         try:
-            self.sc_converter.playback_synthdef("SinOsc.ar(100)", test_file)
+            self.sc_converter.record_sc_code("SinOsc.ar(100)", test_file)
             self.assertTrue(os.path.isfile(test_file))
         finally:
             if delete:
@@ -20,7 +20,7 @@ class SupercolliderConverterTestCase(TestCase):
         self, test_file: str = "test.wav", delete: bool = False
     ):
         try:
-            self.sc_converter.playback_synthdef("{SinOsc.ar(100)}", test_file)
+            self.sc_converter.record_sc_code("{SinOsc.ar(100)}", test_file)
             self.assertTrue(os.path.isfile(test_file))
         finally:
             if delete:
@@ -28,8 +28,10 @@ class SupercolliderConverterTestCase(TestCase):
 
     def test_invalid_sc_code(self):
         with self.assertRaises(ConverterException):
-            self.sc_converter.playback_synthdef(
-                "{ this is not a valid command", "test.wav", timeout=3
+            self.sc_converter.record_sc_code(
+                "{ this is not a valid command",
+                output_file_path="test.wav",
+                timeout=3,
             )
             self.assertFalse(os.path.isfile("test.wav"))
 

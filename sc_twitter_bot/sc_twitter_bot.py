@@ -4,10 +4,11 @@ import subprocess
 import tempfile
 import time
 from typing import Optional
+import threading
 
 import tweepy
 
-from sc_twitter_bot.sc_converter import SuperColliderConverter, ConverterException
+from . import SuperColliderConverter, ConverterException
 
 log = logging.getLogger(__name__)
 
@@ -15,42 +16,91 @@ log = logging.getLogger(__name__)
 class TwitterBot:
     def __init__(
         self,
+        bearer_token: str,
         consumer_key: str,
         consumer_secret: str,
         access_token_key: str,
         access_token_secret: str,
-        do_login: bool = True,
-        sleep_time: int = 5 * 60,
-        bot_screen_name: str = "sc2sbot",
+        bot_screen_name: str = "SC2Sbot",
+        connect: bool = True,
         **kwargs,
     ):
-        self.auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
-        self.auth.set_access_token(access_token_key, access_token_secret)
         self.sc_converter = SuperColliderConverter(**kwargs)
-        self.sleep_time = sleep_time
         self.bot_screen_name = bot_screen_name
+        self.bearer_token = bearer_token
+        self.consumer_key = consumer_key
+        self.consumer_secret = consumer_secret
+        self.access_token_key = access_token_key
+        self.access_token_secret = access_token_secret
 
-        self.api = tweepy.API(self.auth)
-        if do_login:
-            self._login()
+        # for testing purposes we make connecting optional
+        if connect:
+            # inits streaming_client and client
+            self._twitter_login()
 
-    def _login(self):
+    def _twitter_login(self):
+        auth = tweepy.OAuthHandler(self.consumer_key, self.consumer_secret)
+        auth.set_access_token(self.access_token_key, self.access_token_secret)
+
+        # streaming client for receiving
+        self.streaming_client = tweepy.StreamingClient(bearer_token=self.bearer_token)
+        self.streaming_client.on_tweet = self.on_tweet
+
+        # reset rules
+        active_rules = self.streaming_client.get_rules()
+        if active_rules.data:
+            self.streaming_client.delete_rules([r.id for r in active_rules.data])
+        self.streaming_client.add_rules(tweepy.StreamRule(f"@{self.bot_screen_name}"))
+
+        # traditional client for posting
+        # we use v1 as uploading media is not supported yet
+        self.client = tweepy.API(auth)
         try:
-            self.api.verify_credentials()
-            log.info("Successfully authenticated at Twitter")
-        except Exception as e:
+            self.client.verify_credentials()
+            log.info("Successfully authenticated at Twitter posting API")
+        except tweepy.TweepyException as e:
             log.error(f"Could not authenticate! {e}")
             raise e
 
+    def start(self) -> None:
+        try:
+            log.info("Start looking for tweets via streaming API")
+            self.streaming_client.filter(
+                tweet_fields=[
+                    "entities",
+                    "author_id",
+                ]
+            )
+        except KeyboardInterrupt:
+            pass
+        finally:
+            log.info("Disconnect from streaming API")
+            self.streaming_client.disconnect()
+        log.info("Stopped looking for tweets")
+
+    def on_tweet(self, tweet: tweepy.Tweet):
+        threading.Thread(target=self.process_tweet(tweet))
+
+    def process_tweet(self, tweet: tweepy.Tweet):
+        log.info(f"Received tweet from @{tweet.author_id}: {tweet.text}")
+        try:
+            self.post_supercollider_sound_tweet(
+                self._filter_out_synth_def(tweet),
+                reply_tweet=tweet,
+            )
+        except ConverterException:
+            log.error(f"Could not render audio from {tweet}")
+            return
+
     def _convert_to_video(
         self,
-        sc_synthdef: str,
+        sc_code: str,
         video_path: str,
         picture_file_path: str = "sc.png",
         debug: bool = True,
     ):
         with tempfile.NamedTemporaryFile(suffix=".wav") as wav_file:
-            self.sc_converter.playback_synthdef(sc_synthdef, wav_file.name)
+            self.sc_converter.record_sc_code(sc_code, wav_file.name)
             # from https://gist.github.com/nikhan/26ddd9c4e99bbf209dd7
             subprocess.run(
                 [
@@ -71,8 +121,10 @@ class TwitterBot:
                     "30",
                     "-acodec",
                     "aac",
+                    "-b:a",
+                    "128k",
                     "-ar",
-                    "44100",
+                    "48000",
                     "-ac",
                     "2",
                     video_path,
@@ -80,11 +132,10 @@ class TwitterBot:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT if debug else subprocess.PIPE,
             )
-
             log.debug(f"Converted {wav_file.name} to {video_path}")
 
     @staticmethod
-    def _convert_urls_to_sc_code(tweet: tweepy.models.Status) -> str:
+    def _convert_urls_to_sc_code(tweet: tweepy.Tweet) -> str:
         """
         SC code gets interpreted as URLs why we need to convert them back to their original state by
         replacing the URLs with the displayed URL.
@@ -92,72 +143,56 @@ class TwitterBot:
         :param tweet:
         :return: tweet text w/ urls (SinOsc.ar gets t.co/fda) -> actual tweet text
         """
-        tweet_text = str(tweet.full_text)
+        tweet_text = str(tweet.text)
         for url_entity in tweet.entities["urls"]:
             tweet_text = tweet_text.replace(
                 url_entity["url"], url_entity["display_url"]
             )
         return tweet_text
 
+    def _get_username(self, tweet: tweepy.Tweet) -> str:
+        if tweet.author_id:
+            user: tweepy.User = self.client.get_user(user_id=tweet.author_id)
+            return user.screen_name
+        else:
+            log.error(f"Missing author ID: {tweet}")
+            return ""
+
     def post_supercollider_sound_tweet(
-        self, sc_synth_def: str, reply_tweet: Optional[tweepy.models.Status] = None
+        self, sc_synth_def: str, reply_tweet: Optional[tweepy.Tweet] = None
     ):
+        if reply_tweet:
+            username = "@{}".format(self._get_username(reply_tweet))
+        else:
+            username = ""
+
         video_file = tempfile.NamedTemporaryFile(suffix=".mp4")
         self._convert_to_video(sc_synth_def, video_file.name)
-        media = self.api.media_upload(video_file.name)
+        media = self.client.media_upload(
+            video_file.name,
+            media_category="tweet_video",
+        )
+
         time.sleep(5)  # hack b/c twitter api takes time after upload of media
-        self.api.update_status(
-            "@{username} {synth_text}".format(
-                username=reply_tweet.user.screen_name if reply_tweet else " ",
+
+        status = self.client.update_status(
+            "{username} {synth_text}".format(
+                username=username,
                 synth_text=(sc_synth_def[:100] + "...")
                 if len(sc_synth_def) > 100
                 else sc_synth_def,
-            ),
-            reply_tweet_id=reply_tweet.id if reply_tweet else None,
+            ).strip(),
+            in_reply_to_status_id=reply_tweet.id if reply_tweet else None,
             media_ids=[media.media_id],
         )
+        log.info(f"Posted response {status.id}: {status.text}")
         video_file.close()
 
-    def _filter_out_synth_def(self, tweet: tweepy.models.Status) -> str:
+    def _filter_out_synth_def(self, tweet: tweepy.Tweet) -> str:
         text = self._convert_urls_to_sc_code(tweet)
         twitter_name_filter = re.compile(
             re.escape(f"@{self.bot_screen_name}"), re.IGNORECASE
         )
         text = twitter_name_filter.sub("", text).strip()
-        log.debug(f"Filtered out {text} from {tweet.full_text}")
+        log.debug(f"Filtered out {text} from {tweet.text}")
         return text
-
-    def look_for_mentions(self):
-        start_mentions = self.api.mentions_timeline(tweet_mode="extended")
-        seen_mention_ids = set([s.id for s in start_mentions])
-        while True:
-            try:
-                new_mentions = self.api.mentions_timeline(tweet_mode="extended")
-                mention: tweepy.models.Status
-                for mention in [
-                    m for m in new_mentions if m.id not in seen_mention_ids
-                ]:
-                    log.info(
-                        f"New mention from @{mention.user.screen_name}: {mention.full_text}"
-                    )
-                    try:
-                        self.post_supercollider_sound_tweet(
-                            sc_synth_def=self._filter_out_synth_def(mention),
-                            reply_tweet=mention,
-                        )
-                        log.info(
-                            f"Successfully posted tweet response to {mention.full_text}"
-                        )
-                    except ConverterException as e:
-                        log.info(
-                            f"Could not convert SynthDef {mention.full_text} to audio: {e}"
-                        )
-                seen_mention_ids = set([s.id for s in new_mentions])
-            except tweepy.error.TweepError as e:
-                log.error(
-                    f"Received invalid answer from Twitter, back off for 10 minutes: {e}"
-                )
-                time.sleep(10 * 60)
-
-        log.debug(f"Go sleeping for {self.sleep_time} seconds")
-        time.sleep(self.sleep_time)
