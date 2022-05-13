@@ -161,7 +161,7 @@ class TwitterBot:
     def _get_username(self, tweet: tweepy.Tweet) -> str:
         if tweet.author_id:
             user: tweepy.User = self.client.get_user(user_id=tweet.author_id)
-            return user.screen_name
+            return str(user.screen_name)
         else:
             log.error(f"Missing author ID: {tweet}")
             return ""
