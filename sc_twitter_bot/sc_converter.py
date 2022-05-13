@@ -99,7 +99,7 @@ class SuperColliderConverter:
         num_channels: int = 2,
         **kwargs,
     ):
-        log.debug(f"Start converting {osc_file} to {wav_file}")
+        log.debug(f"Start converting OSC {osc_file} to WAV {wav_file}")
         start_time = datetime.now()
         try:
             subprocess.check_output(
@@ -118,8 +118,8 @@ class SuperColliderConverter:
             )
         except subprocess.CalledProcessError as e:
             raise ConverterException(f"Failed convert {osc_file} to {wav_file}: {e}")
-        log.info(
-            f"Successfully converted {osc_file} to {wav_file} in {(datetime.now() - start_time).seconds} seconds"
+        log.debug(
+            f"Successfully converted OSC {osc_file} to WAV {wav_file} in {(datetime.now() - start_time).seconds} seconds"
         )
 
     def record_sc_code(

@@ -37,6 +37,7 @@ class TwitterBot:
             self._twitter_login()
         else:
             self.bot_screen_name = "sc2sbot"
+            self.own_user_id = 0
 
     def _twitter_login(self):
         auth = tweepy.OAuthHandler(self.consumer_key, self.consumer_secret)
@@ -48,7 +49,10 @@ class TwitterBot:
         try:
             user: tweepy.User = self.client.verify_credentials()
             self.bot_screen_name = user.screen_name
-            log.info("Successfully authenticated at Twitter posting API")
+            self.own_user_id = user.id
+            log.info(
+                f"Successfully authenticated at Twitter posting API as {self.bot_screen_name}"
+            )
         except tweepy.TweepyException as e:
             log.error(f"Could not authenticate! {e}")
             raise e
@@ -80,7 +84,10 @@ class TwitterBot:
         log.info("Stopped looking for tweets")
 
     def on_tweet(self, tweet: tweepy.Tweet):
-        threading.Thread(target=self.process_tweet(tweet))
+        if tweet.author_id != self.own_user_id:
+            threading.Thread(target=self.process_tweet(tweet))
+        else:
+            log.debug(f"Ignored own tweet {tweet}")
 
     def process_tweet(self, tweet: tweepy.Tweet):
         log.info(f"Received tweet from @{tweet.author_id}: {tweet.text}")
