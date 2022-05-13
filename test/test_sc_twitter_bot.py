@@ -7,16 +7,17 @@ from sc_twitter_bot.sc_twitter_bot import TwitterBot
 class TwitterBotTestCase(TestCase):
     def setUp(self) -> None:
         self.twitter_bot = TwitterBot(
+            bearer_token="",
             consumer_key="",
             consumer_secret="",
             access_token_key="",
             access_token_secret="",
-            do_login=False,
+            connect=False,
         )
 
     def test_convert_urls_to_sc_code(self):
         tweet = MagicMock(
-            full_text="@SC2Sbot https://t.co/eDJ2jx2I4u",
+            text="@SC2Sbot https://t.co/eDJ2jx2I4u",
         )
         tweet.entities = {
             "urls": [
@@ -36,7 +37,7 @@ class TwitterBotTestCase(TestCase):
         # name at the beginning
         self.assertEqual(
             self.twitter_bot._filter_out_synth_def(
-                MagicMock(full_text="@sc2sbot {SinOsc.ar}", mentions={})
+                MagicMock(text="@sc2sbot {SinOsc.ar}", mentions={})
             ),
             "{SinOsc.ar}",
         )
@@ -44,7 +45,7 @@ class TwitterBotTestCase(TestCase):
         # no name (although this should not happen)
         self.assertEqual(
             self.twitter_bot._filter_out_synth_def(
-                MagicMock(full_text="{SinOsc.ar}", mentions={})
+                MagicMock(text="{SinOsc.ar}", mentions={})
             ),
             "{SinOsc.ar}",
         )
@@ -52,7 +53,7 @@ class TwitterBotTestCase(TestCase):
         # name at the end
         self.assertEqual(
             self.twitter_bot._filter_out_synth_def(
-                MagicMock(full_text="SinOsc.ar @sc2sbot", mentions={})
+                MagicMock(text="SinOsc.ar @sc2sbot", mentions={})
             ),
             "SinOsc.ar",
         )
@@ -60,7 +61,7 @@ class TwitterBotTestCase(TestCase):
         # name capitalizing
         self.assertEqual(
             self.twitter_bot._filter_out_synth_def(
-                MagicMock(full_text="@SC2Sbot {SinOsc.ar}", mentions={})
+                MagicMock(text="@SC2Sbot {SinOsc.ar}", mentions={})
             ),
             "{SinOsc.ar}",
         )
@@ -68,14 +69,14 @@ class TwitterBotTestCase(TestCase):
         # trailing whitespaces
         self.assertEqual(
             self.twitter_bot._filter_out_synth_def(
-                MagicMock(full_text="@sc2sbot  {SinOsc.ar} ", mentions={})
+                MagicMock(text="@sc2sbot  {SinOsc.ar} ", mentions={})
             ),
             "{SinOsc.ar}",
         )
 
     def test_combined_tweet_replace(self):
         tweet = MagicMock(
-            full_text="@SC2Sbot https://t.co/eDJ2jx2I4u",
+            text="@SC2Sbot https://t.co/eDJ2jx2I4u",
         )
         tweet.entities = {
             "urls": [
