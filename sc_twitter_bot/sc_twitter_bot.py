@@ -152,7 +152,7 @@ class TwitterBot:
         :return: tweet text w/ urls (SinOsc.ar gets t.co/fda) -> actual tweet text
         """
         tweet_text = str(tweet.text)
-        for url_entity in tweet.entities["urls"]:
+        for url_entity in tweet.entities.get("urls", []):
             tweet_text = tweet_text.replace(
                 url_entity["url"], url_entity["display_url"]
             )
