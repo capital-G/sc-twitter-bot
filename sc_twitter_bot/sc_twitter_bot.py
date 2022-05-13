@@ -21,12 +21,10 @@ class TwitterBot:
         consumer_secret: str,
         access_token_key: str,
         access_token_secret: str,
-        bot_screen_name: str = "SC2Sbot",
         connect: bool = True,
         **kwargs,
     ):
         self.sc_converter = SuperColliderConverter(**kwargs)
-        self.bot_screen_name = bot_screen_name
         self.bearer_token = bearer_token
         self.consumer_key = consumer_key
         self.consumer_secret = consumer_secret
@@ -35,12 +33,25 @@ class TwitterBot:
 
         # for testing purposes we make connecting optional
         if connect:
-            # inits streaming_client and client
+            # inits streaming_client, client and screen name
             self._twitter_login()
+        else:
+            self.bot_screen_name = "sc2sbot"
 
     def _twitter_login(self):
         auth = tweepy.OAuthHandler(self.consumer_key, self.consumer_secret)
         auth.set_access_token(self.access_token_key, self.access_token_secret)
+
+        # traditional client for posting
+        # we use v1 as uploading media is not supported yet
+        self.client = tweepy.API(auth)
+        try:
+            user: tweepy.User = self.client.verify_credentials()
+            self.bot_screen_name = user.screen_name
+            log.info("Successfully authenticated at Twitter posting API")
+        except tweepy.TweepyException as e:
+            log.error(f"Could not authenticate! {e}")
+            raise e
 
         # streaming client for receiving
         self.streaming_client = tweepy.StreamingClient(bearer_token=self.bearer_token)
@@ -51,16 +62,6 @@ class TwitterBot:
         if active_rules.data:
             self.streaming_client.delete_rules([r.id for r in active_rules.data])
         self.streaming_client.add_rules(tweepy.StreamRule(f"@{self.bot_screen_name}"))
-
-        # traditional client for posting
-        # we use v1 as uploading media is not supported yet
-        self.client = tweepy.API(auth)
-        try:
-            self.client.verify_credentials()
-            log.info("Successfully authenticated at Twitter posting API")
-        except tweepy.TweepyException as e:
-            log.error(f"Could not authenticate! {e}")
-            raise e
 
     def start(self) -> None:
         try:
