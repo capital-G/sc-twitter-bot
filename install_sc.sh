@@ -4,7 +4,7 @@
 # we also install libudev-dev although it is not mandatory but otherwise it won't build
 apt-get update && apt-get install --yes build-essential cmake libjack-jackd2-dev libsndfile1-dev libfftw3-dev libxt-dev libavahi-client-dev libudev-dev
 
-git clone --recurse-submodules https://github.com/SuperCollider/SuperCollider.git
+git clone --recurse-submodules --depth=1 https://github.com/SuperCollider/SuperCollider.git
 
 cd SuperCollider && mkdir -p build && cd build
 
@@ -14,3 +14,5 @@ cmake -DBUILD_TESTING=OFF -DENABLE_TESTSUITE=OFF -DINSTALL_HELP=OFF -DNO_X11=OFF
 make
 
 make install
+
+rm -rf SuperCollider
