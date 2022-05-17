@@ -20,22 +20,26 @@ class SuperColliderConverter:
         sclang_path: Optional[str] = None,
         scsynth_path: Optional[str] = None,
         blueprint_file_path: Optional[str] = None,
+        user: Optional[str] = None,
     ):
         self.sclang_path = sclang_path or os.environ.get("SCLANG_PATH") or "sclang"
         self.scsynth_path = scsynth_path or os.environ.get("SCSYNTH_PATH") or "scsynth"
-        self._blueprint_file_path = blueprint_file_path or os.path.join(
-            os.path.abspath(os.path.dirname(__file__)), "blueprint.sc"
+        self._blueprint_file_path = (
+            blueprint_file_path
+            or os.environ.get("SC_BLUEPRINT_PATH")
+            or os.path.join(os.path.abspath(os.path.dirname(__file__)), "blueprint.sc")
         )
+        self.user = user or os.environ.get("SC_USER")
 
         try:
-            subprocess.check_output([self.sclang_path, "-h"])
+            subprocess.check_output([self.sclang_path, "-h"], user=self.user)
         except (subprocess.CalledProcessError, FileNotFoundError) as e:
             raise ConverterException(
                 f"Please check sclang path or install supercollider! {e}"
             )
 
         try:
-            subprocess.check_output([self.scsynth_path, "-v"])
+            subprocess.check_output([self.scsynth_path, "-v"], user=self.user)
         except (subprocess.CalledProcessError, FileNotFoundError) as e:
             raise ConverterException(
                 f"Please check scsynth path or install supercollider! {e}"
@@ -76,6 +80,7 @@ class SuperColliderConverter:
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.STDOUT,
                 shell=False,
+                user=self.user,
             )
             try:
                 p.wait(timeout)
@@ -114,7 +119,8 @@ class SuperColliderConverter:
                     sample_format,
                     "-o",
                     str(num_channels),
-                ]
+                ],
+                user=self.user,
             )
         except subprocess.CalledProcessError as e:
             raise ConverterException(f"Failed convert {osc_file} to {wav_file}: {e}")
