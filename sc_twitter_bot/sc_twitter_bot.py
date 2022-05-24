@@ -228,6 +228,9 @@ class TwitterBot:
             media_category="tweet_video",
         )
 
+        log.debug(
+            f"Uploaded video as {media.media_id} - wait for 5 seconds for API to catch up"
+        )
         time.sleep(5)  # hack b/c twitter api takes time after upload of media
 
         status = self.client.update_status(
@@ -242,6 +245,10 @@ class TwitterBot:
         )
         log.info(f"Posted response {status.id}: {status.text}")
         video_file.close()
+
+        log.debug(f"Cool down to retweet response for feed")
+        time.sleep(5)
+        self.client.update_status(f"https://twitter.com/SC2Sbot/status/{status.id}")
 
     def _filter_out_synth_def(self, tweet: tweepy.Tweet) -> str:
         text = self._convert_urls_to_sc_code(tweet)
