@@ -1,6 +1,8 @@
 SynthDef("scTwitterBot", {
+	var sig = $synth_def;
+
 	Out.ar(0,
-		$synth_def,
+		sig.tanh*0.95,
 	)
 }).writeDefFile;
 
