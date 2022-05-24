@@ -4,6 +4,8 @@
 
 A Twitter bot which replies with generated music from sended SynthDefs.
 
+Requires Python 3.10+.
+
 ## Run tests
 
 ```shell
