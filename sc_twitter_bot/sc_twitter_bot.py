@@ -6,7 +6,9 @@ import time
 from typing import Optional
 import threading
 import re
+import random
 
+from PIL import Image, ImageDraw, ImageFont, ImageColor
 import tweepy
 
 from . import SuperColliderConverter, ConverterException
@@ -101,47 +103,91 @@ class TwitterBot:
             log.error(f"Could not render audio from {tweet}")
             return
 
+    def _create_image_from_code(
+        self,
+        code: str,
+        image_path: str,
+        source_image_path: str = "sc.png",
+        font_file="RobotoMono-Medium.ttf",
+    ) -> None:
+        image = Image.open(source_image_path)
+        image_draw = ImageDraw.Draw(image)
+        for _ in range(40):
+            image_draw.text(
+                # random position
+                (
+                    random.randint((-1) * image.size[0] / 2, image.size[0] * 0.75),
+                    random.randint(0, image.size[1]),
+                ),
+                code,
+                # color should be a lighter shade
+                [int(255 * (random.random() * 0.25 + 0.75)) for _ in range(3)],
+                font=ImageFont.truetype(font=font_file, size=random.randint(10, 40)),
+            )
+        # create a line break every 32 chars
+        code = "".join(code[i : i + 32] + "\n" for i in range(0, len(code), 32))
+
+        # find a good size for the main font
+        font = ImageFont.truetype(font=font_file, size=max(60, int(1800 / (len(code)))))
+        # get text position so we can center it
+        w, h = image_draw.textsize(code, font=font)
+
+        image_draw.text(
+            ((image.size[0] - w) / 2, (image.size[1] - h) / 2),
+            code,
+            font=font,
+            fill=ImageColor.getrgb(
+                f"hsv({random.randint(0, 100)},{random.randint(80, 100)}%,{random.randint(50, 100)}%)"
+            ),
+        )
+
+        image.save(image_path)
+
     def _convert_to_video(
         self,
         sc_code: str,
         video_path: str,
-        picture_file_path: str = "sc.png",
+        source_image_path: str = "sc.png",
         debug: bool = True,
     ):
         with tempfile.NamedTemporaryFile(suffix=".wav") as wav_file:
             self.sc_converter.record_sc_code(sc_code, wav_file.name)
-            # from https://gist.github.com/nikhan/26ddd9c4e99bbf209dd7
-            subprocess.run(
-                [
-                    "ffmpeg",
-                    "-loop",
-                    "1",
-                    "-y",
-                    "-i",
-                    picture_file_path,
-                    "-i",
-                    wav_file.name,
-                    "-shortest",
-                    "-c:v",
-                    "libx264",
-                    "-pix_fmt",
-                    "yuv420p",
-                    "-r",
-                    "30",
-                    "-acodec",
-                    "aac",
-                    "-b:a",
-                    "128k",
-                    "-ar",
-                    "48000",
-                    "-ac",
-                    "2",
-                    video_path,
-                ],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT if debug else subprocess.PIPE,
-            )
-            log.debug(f"Converted {wav_file.name} to {video_path}")
+            with tempfile.NamedTemporaryFile(suffix=".png") as png_file:
+                self._create_image_from_code(
+                    sc_code, png_file.name, source_image_path=source_image_path
+                )
+                # from https://gist.github.com/nikhan/26ddd9c4e99bbf209dd7
+                subprocess.run(
+                    [
+                        "ffmpeg",
+                        "-loop",
+                        "1",
+                        "-y",
+                        "-i",
+                        png_file.name,
+                        "-i",
+                        wav_file.name,
+                        "-shortest",
+                        "-c:v",
+                        "libx264",
+                        "-pix_fmt",
+                        "yuv420p",
+                        "-r",
+                        "30",
+                        "-acodec",
+                        "aac",
+                        "-b:a",
+                        "128k",
+                        "-ar",
+                        "48000",
+                        "-ac",
+                        "2",
+                        video_path,
+                    ],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT if debug else subprocess.PIPE,
+                )
+                log.debug(f"Converted {wav_file.name} to {video_path}")
 
     @staticmethod
     def _convert_urls_to_sc_code(tweet: tweepy.Tweet) -> str:
