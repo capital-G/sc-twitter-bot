@@ -5,6 +5,7 @@ import tempfile
 import time
 from typing import Optional
 import threading
+import re
 
 import tweepy
 
@@ -202,5 +203,7 @@ class TwitterBot:
             re.escape(f"@{self.bot_screen_name}"), re.IGNORECASE
         )
         text = twitter_name_filter.sub("", text).strip()
+        # remove hashtags
+        text = re.sub(r"#\S*", "", text).strip()
         log.debug(f"Filtered out {text} from {tweet.text}")
         return text

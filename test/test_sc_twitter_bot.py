@@ -89,3 +89,9 @@ class TwitterBotTestCase(TestCase):
         }
 
         self.assertEqual(self.twitter_bot._filter_out_synth_def(tweet), "SinOsc.ar")
+
+    def test_remove_hashtag_in_tweet(self):
+        tweet = MagicMock(text="Something we want to #test")
+        self.assertEqual(
+            self.twitter_bot._filter_out_synth_def(tweet), "Something we want to"
+        )
