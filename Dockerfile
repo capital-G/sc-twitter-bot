@@ -25,5 +25,5 @@ RUN adduser --disabled-password --gecos "" sc && \
 ENV PYTHONUNBUFFERED=0
 
 CMD ["/bin/sh", "-c", \
-    "'setfacl -m u:sc:--- /home/sc-twitter-bot && python /home/sc-twitter-bot/start_bot.py'" \
+    "setfacl -m u:sc:--- /home/sc-twitter-bot && python /home/sc-twitter-bot/start_bot.py" \
 ]
