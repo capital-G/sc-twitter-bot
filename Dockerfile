@@ -19,8 +19,11 @@ ADD . .
 
 # do not allow sc to access our directory
 RUN adduser --disabled-password --gecos "" sc && \
-    setfacl -m u:sc:--- .
+    chmod u+s /usr/local/bin/sclang && \
+    chmod u+s /usr/local/bin/scsynth
 
 ENV PYTHONUNBUFFERED=0
 
-CMD ["python", "/home/sc-twitter-bot/start_bot.py"]
+CMD ["/bin/sh", "-c", \
+    "'setfacl -m u:sc:--- /home/sc-twitter-bot && python /home/sc-twitter-bot/start_bot.py'" \
+]
