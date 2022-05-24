@@ -121,7 +121,7 @@ class TwitterBot:
                 ),
                 code,
                 # color should be a lighter shade
-                [int(255 * (random.random() * 0.25 + 0.75)) for _ in range(3)],
+                tuple([int(255 * (random.random() * 0.25 + 0.75)) for _ in range(3)]),
                 font=ImageFont.truetype(font=font_file, size=random.randint(10, 40)),
             )
         # create a line break every 32 chars
